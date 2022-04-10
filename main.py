@@ -1,9 +1,8 @@
 import networkx as nx
-import numpy as np
-import matplotlib.pyplot as plt
 import math
 import kron_gen
 import init_gen
+import os
 
 
 def compare(a):
@@ -11,81 +10,80 @@ def compare(a):
         return a + 10000000
     return a
 
-def get_graph(nxgraph):
-    x = nxgraph
-    cc_conn = nx.connected_components(x)
-    num_cc = nx.number_connected_components(x)
-    # largest_cc = len(cc_conn[0])
 
-    return x, cc_conn, num_cc  # , largest_cc
+def get_graph(nxgraph):
+    cc_conn = nx.connected_components(nxgraph)
+    num_cc = nx.number_connected_components(nxgraph)
+    return cc_conn, num_cc
+
 
 def create_graph_stats(nxgraph):
-    (x, cc_conn, num_cc) = get_graph(nxgraph)  # , largest_cc
-    cc = nx.closeness_centrality(x)
-    bc = nx.betweenness_centrality(x)
-    deg = nx.degree_centrality(x)
-    dens = nx.density(x)
+    cc_conn, num_cc = get_graph(nxgraph)
+    cc = nx.closeness_centrality(nxgraph)
+    bc = nx.betweenness_centrality(nxgraph)
+    deg = nx.degree_centrality(nxgraph)
+    dens = nx.density(nxgraph)
 
-    stats = {'cc': cc, 'bc': bc, 'deg': deg, \
-             'num_cc': num_cc, 'dens': dens}  # , 'largest_cc':largest_cc}
+    stats = {
+        'closeness_centrality': cc,
+        'betweenness_centrality': bc,
+        'degree_centrality': deg,
+        'number_connected_components': num_cc,
+        'density': dens
+    }
 
-    return stats  # conn,
+    return stats
 
-def get_top_graph(G, all_node_order, k):
-    k = int(k)
+
+def get_top_graph(g, node_order, depth):
+    depth = int(depth)
     real_G = nx.Graph()
-    for x in all_node_order[:k]:
-        for y in G.neighbors(x):
-            if compare(x)>compare(y):
+    for x in node_order[:depth]:
+        for y in g.neighbors(x):
+            if compare(x) > compare(y):
                 real_G.add_edge(x, y)
     return real_G
 
 
-G = nx.read_edgelist("./dataset/Cit-hepTh.txt", create_using=nx.DiGraph(), nodetype=int)
+if __name__ == "__main__":
+    working_directory = os.getcwd()
+    hepth_path = os.path.join(working_directory, "dataset/Cit-HepTh.txt")
+    hepth_dates_path = os.path.join(working_directory, "dataset/Cit-HepTh-dates.txt")
 
-nodes_dates = {}
-with open('./dataset/Cit-HepTh-dates.txt', 'r') as data:
-    x = []
-    y = []
-    for line in data:
-        p = line.split()
-        nodes_dates[int(p[0])] = p[1]
+    G = nx.read_edgelist(hepth_path, create_using=nx.DiGraph(), nodetype=int)
 
-all_node_order = list(G.nodes()).copy()
-all_node_order = sorted(all_node_order, key=lambda x: compare(x))
+    nodes_dates = {}
+    with open(hepth_dates_path, 'r') as data:
+        x = []
+        y = []
+        for line in data:
+            p = line.split()
+            nodes_dates[int(p[0])] = p[1]
 
-# get init matrix from kron-fit algorithm
-nodes = 2
-init = init_gen.InitMatrix(nodes)
-init.make()
-init.setValue(0.957, 0, 0)
-init.setValue(0.564, 0, 1)
-init.setValue( 0.657, 1, 0)
-init.setValue(0.037, 1, 1)
+    all_node_order = list(G.nodes()).copy()
+    all_node_order = sorted(all_node_order, key=lambda node: compare(node))
 
-det_init = init_gen.InitMatrix(nodes)
-det_init.make()
-det_init.setValue(1, 0, 0)
-det_init.setValue(1, 1, 0)
-det_init.setValue(1, 0, 1)
-det_init.setValue(0, 1, 1)
+    # get init matrix from kron-fit algorithm
+    nodes = 2
+    init = init_gen.InitMatrix(nodes)
+    init.make()
+    init.set_value(0.957, 0, 0)
+    init.set_value(0.564, 0, 1)
+    init.set_value(0.657, 1, 0)
+    init.set_value(0.037, 1, 1)
 
+    det_init = init_gen.InitMatrix(nodes)
+    det_init.make()
+    det_init.set_value(1, 0, 0)
+    det_init.set_value(1, 1, 0)
+    det_init.set_value(1, 0, 1)
+    det_init.set_value(0, 1, 1)
 
+    for k in range(1, 14):
+        real_graph = get_top_graph(G, all_node_order, math.pow(nodes, k))
+        deterministic_graph = kron_gen.generate_deterministic_kron_graph(det_init, k)
+        stochastic_graph = kron_gen.generate_stochastic_kron_graph(init, k)
 
-for k in range(1, 14):
-    real_G = get_top_graph(G, all_node_order, math.pow(nodes, k))
-    det_G = kron_gen.generateDeterministicKron(init, k)
-    stoc_G = kron_gen.generateStochasticKron(init, k)
-
-    print(create_graph_stats(real_G))
-    print(create_graph_stats(det_G))
-    print(create_graph_stats(stoc_G))
-
-
-
-
-
-
-
-
-
+        print(create_graph_stats(real_graph))
+        print(create_graph_stats(deterministic_graph))
+        print(create_graph_stats(stochastic_graph))
