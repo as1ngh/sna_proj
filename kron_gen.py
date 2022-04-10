@@ -17,48 +17,43 @@ def delete_self_loops(graph, node_count):
     return graph
 
 
-def generate_stochastic_kron_graph(initiator_matrix, k, delete_self_loops_for_stats=False, directed=False, custom_edges=False,
+def generate_stochastic_kron_graph(initiator_matrix, k, delete_self_loops_for_stats=False, directed=False,
+                                   custom_edges=False,
                                    edges=0):
-    initN = initiator_matrix.get_init_node_count()
-    nNodes = math.pow(initN, k)  # get final size and make empty 'kroned' matrix
-    mtxDim = initiator_matrix.get_init_node_count()
-    mtxSum = initiator_matrix.get_matrix_sum()
+    init_n = initiator_matrix.get_init_node_count()
+    n_nodes = math.pow(init_n, k)
+    matrix_dimension = initiator_matrix.get_init_node_count()
+    matrix_sum = initiator_matrix.get_matrix_sum()
     if custom_edges:
-        nEdges = edges
-        if nEdges > (nNodes * nNodes):
+        n_edges = edges
+        if n_edges > (n_nodes * n_nodes):
             raise ValueError("More edges than possible with number of Nodes")
     else:
-        nEdges = math.pow(mtxSum, k)  # get number of predicted edges
+        n_edges = math.pow(matrix_sum, k)  # get number of predicted edges
     collisions = 0
 
-    print("mtxSum")
-    print(mtxSum)
-    print("Edges: ")
-    print(nEdges)
-    print("Nodes: ")
-    print(nNodes)
-    print("iniMtx")
-    print(initiator_matrix)
+    print("Matrix sum:", matrix_sum)
+    print("Edges: ", n_edges)
+    print("Nodes: ", n_nodes)
+    print("iniMtx", initiator_matrix)
 
     # create vector for recursive matrix probability
-    probToRCPosV = []
-    cumProb = 0.0
-    for i in range(mtxDim):
-        for j in range(mtxDim):
+    recursive_mtx_probability = []
+    cumulative_probability = 0.0
+    for i in range(matrix_dimension):
+        for j in range(matrix_dimension):
             prob = initiator_matrix.get_value(i, j)
             if prob > 0.0:
-                cumProb += prob
-                probToRCPosV.append((cumProb / mtxSum, i, j))
-                # print "Prob Vector Value:" #testing
-                # print cumProb/mtxSum #testing
+                cumulative_probability += prob
+                recursive_mtx_probability.append((cumulative_probability / matrix_sum, i, j))
 
     # add Nodes
-    finalGraph = np.zeros((int(nNodes), int(nNodes)))
+    final_graph = np.zeros((int(n_nodes), int(n_nodes)))
     # add Edges
     e = 0
-    # print nEdges #testing
-    while e < nEdges:
-        rng = nNodes
+    # print n_edges #testing
+    while e < n_edges:
+        rng = n_nodes
         row = 0
         col = 0
         for t in range(k):
@@ -66,29 +61,28 @@ def generate_stochastic_kron_graph(initiator_matrix, k, delete_self_loops_for_st
             # print "prob:" #testing
             # print prob #testing
             n = 0
-            while prob > probToRCPosV[n][0]:
+            while prob > recursive_mtx_probability[n][0]:
                 n += 1
-            mrow = probToRCPosV[n][1]
-            mcol = probToRCPosV[n][2]
-            rng /= mtxDim
+            mrow = recursive_mtx_probability[n][1]
+            mcol = recursive_mtx_probability[n][2]
+            rng /= matrix_dimension
             row += mrow * rng
             col += mcol * rng
-        if finalGraph[int(row)][int(col)] == 0:  # if there is no edge
-            finalGraph[int(row)][int(col)] = 1
+        if final_graph[int(row)][int(col)] == 0:  # if there is no edge
+            final_graph[int(row)][int(col)] = 1
             e += 1
             if not directed:  # symmetry if not directed
                 if row != col:
-                    finalGraph[int(row)][int(col)] = 1
+                    final_graph[int(col)][int(row)] = 1
                     e += 1
         else:
             collisions += 1
-    print("Collisions: ")
-    print(collisions)  # testing
+    print("Collisions: ", collisions)
     # delete self loops if needed for stats
     if delete_self_loops_for_stats:
-        finalGraph = delete_self_loops(finalGraph, nNodes)
-    finalGraph = convert(finalGraph)
-    return finalGraph
+        final_graph = delete_self_loops(final_graph, n_nodes)
+    final_graph = convert(final_graph)
+    return final_graph
 
 
 def generate_deterministic_kron_graph(initiator_matrix, k):
