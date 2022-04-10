@@ -3,6 +3,7 @@ import math
 import kron_gen
 import init_gen
 import os
+import pprint
 
 
 def compare(a):
@@ -33,6 +34,12 @@ def create_graph_stats(nxgraph):
     }
 
     return stats
+
+
+def print_graph_stats(heading: str, stats: dict):
+    print(("=" * 29) + "Graph statistics for " + heading + "=" * 100)
+    pprint.pprint(stats)
+    print(("=" * 150) + ("=" * len(heading)) + "\n\n")
 
 
 def get_top_graph(g, node_order, depth):
@@ -82,8 +89,8 @@ if __name__ == "__main__":
     for k in range(1, 14):
         real_graph = get_top_graph(G, all_node_order, math.pow(nodes, k))
         deterministic_graph = kron_gen.generate_deterministic_kron_graph(det_init, k)
-        stochastic_graph = kron_gen.generate_stochastic_kron_graph(init, k)
+        stochastic_graph, collisions = kron_gen.generate_stochastic_kron_graph(init, k)
 
-        print(create_graph_stats(real_graph))
-        print(create_graph_stats(deterministic_graph))
-        print(create_graph_stats(stochastic_graph))
+        print_graph_stats("REAL GRAPH", create_graph_stats(real_graph))
+        print_graph_stats("DETERMINISTIC GRAPH", create_graph_stats(deterministic_graph))
+        print_graph_stats("STOCHASTIC GRAPH", create_graph_stats(stochastic_graph))
